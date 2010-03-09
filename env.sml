@@ -5,8 +5,16 @@
 structure Env =
 struct
 
-type 'a environment = (string * 'a) list
+(* environments are finite mappings from strings to 'a *)
 
-val empty : 'a environment = nil
+type 'a mapping = string -> 'a
 
-fun bind (env : 'a environment, name, value) 
+val empty : 'a mapping =
+      fn x => raise Fail(concat["unbound variable \"", x, "\""])
+
+(* Curried function - build new envs with bind(env, x, v) and look up by
+ * applying that to the value to look up*)
+fun bind (env : 'a mapping, name, value) lookup =
+  if (name = lookup) then value else env(lookup)
+
+end
