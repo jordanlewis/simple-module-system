@@ -18,8 +18,8 @@ datatype exp = VAR of string
              | TRUE
              | FALSE
              | IF of (ty * exp * exp *exp) (* if [ty] exp1 then exp2 else exp3*)
-             | FUN of (string * string * ty *exp) 
-             (*        name,    argname, type, body *)
+             | FUN of (string * string * ty * ty *exp)
+             (*        name,    argname, typein, typeout, body *)
              | APPLY of (exp * exp)
              | LET of (string * ty * exp * exp) (* x:ty=exp1 in exp2 *)
 end
