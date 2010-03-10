@@ -26,12 +26,14 @@ fun eval (env, VAR x) = env(x)
   | eval (env, TRUE) = Bool true
   | eval (env, FALSE) = Bool false
   | eval (env, IF(_, exp, tt, ff)) =
-      if (eval(env, exp) = true) then eval(env, tt) else eval(env, ff)
+      (case eval(env, exp) of Bool true => eval(env, tt)
+                            | Bool false => eval(env, ff))
   | eval (env, f as FUN _) = Closure(f, env)
-  | eval (env, APPLY(func, arg)) = eval(env, APPLY(eval(env, func), arg))
-  | eval (env, APPLY(func as Closure(FUN(f, x, _, _, e), _), arg)) =
-      eval(bind(bind(env, x, eval(env, arg)), f, func), e)
+  | eval (env, APPLY(func, arg)) = apply(eval(env, func), eval(env, arg))
   | eval (env, LET(x, _, exp, body)) =
       eval(bind(env, x, eval(env, exp)), body)
+
+and apply (func as Closure(FUN(f, x, _, _, e), env), arg : value) =
+      eval(bind(bind(env, x, arg), f, func), e)
 
 end
