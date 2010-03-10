@@ -5,8 +5,10 @@
 structure TypeCheck =
 struct
 
-open Syntax
-open Env
+local
+  open Syntax
+  open Env
+in
 
 exception TypeError of string
 
@@ -42,4 +44,4 @@ fun typeOf (env, VAR x) = env x
       then typeOf(bind(env, x, ty), body)
       else raise TypeError "type mismatch in let"
 end
-
+end

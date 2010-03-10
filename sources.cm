@@ -4,3 +4,5 @@ group is
 
 syntax.sml
 env.sml
+dynamic.sml
+static.sml
