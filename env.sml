@@ -12,10 +12,10 @@ type 'a mapping = string -> 'a
 
 type ('a,'b) environment = {tenv: 'a mapping, venv: 'b mapping}
 
-val emptymap : 'a mapping =
+val empty : 'a mapping =
       fn x => raise Fail(concat["unbound variable \"", x, "\""])
 
-val empty = {tenv = emptymap, venv = emptymap}
+val newenv = {tenv = empty, venv = empty}
 
 (* Curried function - build new envs with bind(env, x, v) and look up by
  * applying that to the value to look up*)
