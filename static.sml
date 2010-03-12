@@ -35,22 +35,27 @@ fun typeOf (env, VAR x) = env x
          (typeOf(env, ff) = ty)
       then ty
       else raise TypeError "if"
-  | typeOf (env, FN(x, tyin, tyout, exp)) =
-      (* new environment with x bound *)
-      if typeOf(bind(env, x, tyin), exp) = tyout
-      then FUNCTION(tyin, tyout)
-      else raise TypeError "fun"
-  | typeOf (env, TYFN(t, exp)) = POLY(t, typeOf(env, exp))
+  | typeOf (env, FN(x, ty, exp)) =
+      (case x of VarParam(name, varty) =>
+                   (* new environment with x bound *)
+                   if typeOf(bind(env, name, varty), exp) = ty
+                   then FUNCTION(varty, ty)
+                   else raise TypeError "fun with var argument"
+               | TyParam(name) => POLY(name, typeOf(env, exp))
+      )
   | typeOf (env, APPLY(func, arg)) =
       (case typeOf(env, func)
-         of FUNCTION(tyin, tyout) => if typeOf(env, arg) = tyin
-                                    then tyout
-                                    else raise TypeError "domain"
-         | _ => raise TypeError "applying non-function")
-  | typeOf (env, TYAPPLY(func, arg)) =
-      (case typeOf(env, func)
-        of POLY(t, tyout) => replacety(t, arg, tyout)
-        | _ => raise TypeError "applying non-polyfunction")
+         of FUNCTION(tyin, tyout) =>
+            (case arg of ExpArg(exparg) => if typeOf(env, exparg) = tyin
+                                           then tyout
+                                           else raise TypeError "domain"
+                       | _ => raise TypeError "expecting exp arg not tyarg"
+            )
+          | POLY(t, tyout) =>
+            (case arg of TyArg(tyarg) => replacety(t, tyarg, tyout)
+                | _ => raise TypeError "expecting tyarg"
+            )
+          | _ => raise TypeError "applying non-function")
   | typeOf (env, LET(x, ty, exp, body)) = 
       if typeOf(env, exp) = ty
       (* add x => ty to new env *)

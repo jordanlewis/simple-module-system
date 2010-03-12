@@ -2,7 +2,16 @@
 
 (* evaluator *)
 
-structure Eval =
+signature EVAL =
+sig
+  type environment
+  type value
+  type appargval
+  val eval : environment * Syntax.exp -> value
+  val apply : value * appargval -> value
+end
+
+structure Eval : EVAL =
 struct
 
 local
@@ -12,11 +21,19 @@ in
 
 exception RunError of string
 
+
+(* "Bottom" values *)
 datatype value
   = Num of int
   | Bool of bool
   | Closure of exp * {venv: value mapping, tenv: ty mapping}
-  | TyClosure of exp * {venv: value mapping, tenv: ty mapping}
+
+(* things that you can pass to apply() as arguments: values or types *)
+datatype appargval
+  = TyValArg of ty
+  | ValArg of value
+
+type environment = {venv: value mapping, tenv: ty mapping}
 
 fun eval ({venv, tenv}, VAR x) = venv(x)
   | eval (env, NUM n) = Num n
@@ -38,19 +55,23 @@ fun eval ({venv, tenv}, VAR x) = venv(x)
                             | Bool false => eval(env, ff)
                             | _ => raise RunError "non-bool if predicate")
   | eval (env, f as FN _) = Closure(f, env)
-  | eval (env, f as TYFN _) = TyClosure(f, env)
-  | eval (env, APPLY(func, arg)) = apply(eval(env, func), eval(env, arg))
-  | eval (env, TYAPPLY(func, tyarg)) = tyapply(eval(env, func), tyarg)
+  | eval (env, APPLY(func, arg)) =
+      (case arg
+         of ExpArg exparg => apply(eval(env, func), ValArg (eval(env, exparg)))
+          | TyArg  tyarg  => apply(eval(env, func), TyValArg tyarg))
+
+  (*| eval (env, TYAPPLY(func, tyarg)) = tyapply(eval(env, func), tyarg)*)
   | eval (env as {venv, tenv}, LET(x, _, exp, body)) =
       eval({venv = bind(venv, x, eval(env, exp)), tenv = tenv}, body)
 
-and apply (func as Closure(FN(x, _, _, e), env as {venv, tenv}), arg) =
-      eval({venv = bind(venv, x, arg), tenv = tenv},  e)
+and apply (func as Closure(FN(VarParam(name, _), t, e), env as {venv, tenv}),
+            arg as ValArg valarg) =
+             eval({venv = bind(venv, name, valarg), tenv = tenv}, e)
+  | apply (func as Closure(FN(TyParam(name), t, e), env as {venv, tenv}),
+           arg as TyValArg tyvalarg) =
+             eval({venv = venv, tenv = bind(tenv, name, tyvalarg)}, e)
   | apply (_, arg) = raise RunError "Trying to apply a non-function"
 
-and tyapply (func as TyClosure(TYFN(t, e), {venv, tenv}), tyarg: ty) =
-      eval({venv = venv, tenv = bind(tenv, t, tyarg)}, e)
-  | tyapply (_, arg) = raise RunError "Can't apply a non-tyfun as a tyfun"
 
 end
 end
