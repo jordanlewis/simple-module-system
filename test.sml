@@ -17,5 +17,4 @@ val tyOfPolyidInt = TypeCheck.typeOf(Env.empty, polyidIntFive)
 val valOfPolyidInt = Eval.eval(Env.newenv, polyidIntFive)
 
 
-
 end

@@ -35,8 +35,7 @@ and apparg = ExpArg of exp
 
 datatype decl = TYDECL of string * string option * ty (* type foo ['a] = ty *)
               | VALDECL of string * ty option * exp   (* val foo (:ty) = exp *)
-              | FUNDECL of string * string * ty * ty * exp
-              | TYFUNDECL of string * string * ty * exp
+              | FUNDECL of string * param * ty * exp
 
 datatype prog = SimpleProg of exp
               | Prog of decl list * exp
