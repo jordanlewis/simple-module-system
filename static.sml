@@ -5,15 +5,15 @@
 signature TYPECHECK =
 sig
   type environment
-  val replacety : (Syntax.tyname * Syntax.ty * Syntax.ty) -> Syntax.ty
-  val typeOf : environment * Syntax.exp -> Syntax.ty
+  val replacety : (Ast.tyname * Ast.ty * Ast.ty) -> Ast.ty
+  val typeOf : environment * Ast.exp -> Ast.ty
 end
 
 structure TypeCheck =
 struct
 
 local
-  open Syntax
+  open Ast
   open Env
 in
 
@@ -61,5 +61,18 @@ fun typeOf (env, VAR x) = env x
       (* add x => ty to new env *)
       then typeOf(bind(env, x, ty), body)
       else raise TypeError "type mismatch in let"
+
+fun typeCheck (program: prog as Prog(decls, expr)) =
+  let val env = 
+    foldl(fn (dec: decl, env) =>
+              (case dec
+                 of TYDECL (name, arg, ty) => bind(env, name, ty)
+                  | VALDECL (name, e) => bind(env, name, typeOf(env, e))
+                  | _ => env))
+          empty decls
+  in
+    typeOf (env, expr)
+  end
+
 end
 end
