@@ -2,6 +2,13 @@
 
 (* static type checker*)
 
+signature TYPECHECK =
+sig
+  type environment
+  val replacety : (Syntax.tyname * Syntax.ty * Syntax.ty) -> Syntax.ty
+  val typeOf : environment * Syntax.exp -> Syntax.ty
+end
+
 structure TypeCheck =
 struct
 
@@ -10,6 +17,7 @@ local
   open Env
 in
 
+type environment = ty mapping
 exception TypeError of string
 
 fun replacety (find, replace, ty as TYVAR x) =
@@ -29,33 +37,25 @@ fun typeOf (env, VAR x) = env x
   | typeOf (env, PRIM(LESS, e1, e2)) = BOOL
   | typeOf (env, TRUE) = BOOL
   | typeOf (env, FALSE) = BOOL
-  | typeOf (env, IF(ty, exp, tt, ff)) =
-      if (typeOf(env, exp) = BOOL) andalso
-         (typeOf(env, tt) = ty) andalso
-         (typeOf(env, ff) = ty)
-      then ty
-      else raise TypeError "if"
-  | typeOf (env, FN(x, ty, exp)) =
-      (case x of VarParam(name, varty) =>
-                   (* new environment with x bound *)
-                   if typeOf(bind(env, name, varty), exp) = ty
-                   then FUNCTION(varty, ty)
-                   else raise TypeError "fun with var argument"
-               | TyParam(name) => POLY(name, typeOf(env, exp))
-      )
+  | typeOf (env, IF(exp, tt, ff)) =
+      if (typeOf(env, exp) = BOOL) then
+        (let val ty1 = typeOf(env, tt) in
+           if typeOf(env, ff) = ty1 then ty1 else raise TypeError "if 2"
+         end)
+      else raise TypeError "if 1"
+  | typeOf (env, FN(name, ty, exp)) =
+      FUNCTION(ty, typeOf(bind(env, name, ty), exp))
+  | typeOf (env, TYFN(name, exp)) = POLY(name, typeOf(env, exp))
   | typeOf (env, APPLY(func, arg)) =
       (case typeOf(env, func)
          of FUNCTION(tyin, tyout) =>
-            (case arg of ExpArg(exparg) => if typeOf(env, exparg) = tyin
-                                           then tyout
-                                           else raise TypeError "domain"
-                       | _ => raise TypeError "expecting exp arg not tyarg"
-            )
-          | POLY(t, tyout) =>
-            (case arg of TyArg(tyarg) => replacety(t, tyarg, tyout)
-                | _ => raise TypeError "expecting tyarg"
-            )
-          | _ => raise TypeError "applying non-function")
+             if typeOf(env, arg) = tyin then tyout
+             else raise TypeError "apply argument has wrong type"
+          | _ => raise TypeError "applying a non-fn")
+  | typeOf (env, TYAPPLY(func, tyarg)) =
+      (case typeOf(env, func)
+         of POLY(name, tyout) => replacety(name, tyarg, tyout)
+          | _ => raise TypeError "tyapplying a non-poly")
   | typeOf (env, LET(x, ty, exp, body)) = 
       if typeOf(env, exp) = ty
       (* add x => ty to new env *)
