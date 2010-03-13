@@ -1,3 +1,3 @@
 test:
-	sml env.sml syntax.sml dynamic.sml static.sml test.sml
+	sml env.sml ast.sml dynamic.sml static.sml test.sml
 
