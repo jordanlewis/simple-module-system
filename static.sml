@@ -31,6 +31,22 @@ fun replacety (find, replace, ty as TYVAR x) =
       POLY(x, replacety(find, replace, t))
   | replacety (find, replace, ty) = ty
 
+fun baseTy (env as (locenv, mods), ty: ty) =
+  (case ty
+     of TYVAR n => baseTy (env, locenv n)
+      | TYPATH (modlist, n) =>
+          (case modlist
+            of nil => raise TypeError "nil typath?"
+             | _ => let val rec pathEnv : (modname * modenv) -> modenv =
+                       fn (mname, menv as (subenv, submods)) =>
+                            (case (submods mname)
+                               of MODULE env => env
+                                | POINTER y => pathEnv (y, menv))
+                     val (subenv, mods) = foldl pathEnv env modlist
+                 in baseTy ((subenv, mods), subenv n)
+                 end)
+      | _ => ty)
+
 fun typeOf (env as (locenv, mods), VAR x) = locenv x
   | typeOf (env:modenv as (locenv, mods), PATH (modlist, var)) =
       (case modlist
@@ -68,7 +84,7 @@ fun typeOf (env as (locenv, mods), VAR x) = locenv x
           | _ => raise TypeError "applying a non-fn")
   | typeOf (env, TYAPPLY(func, tyarg)) =
       (case typeOf(env, func)
-         of POLY(name, tyout) => replacety(name, tyarg, tyout)
+         of POLY(name, tyout) => replacety(name, baseTy (env, tyarg), tyout)
           | _ => raise TypeError "tyapplying a non-poly")
   | typeOf (env as (locenv, mods),  LET(x, ty, exp, body)) = 
       if typeOf(env, exp) = ty

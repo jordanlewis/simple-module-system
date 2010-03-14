@@ -53,10 +53,10 @@ fun tyToStr (typ: ty) =
 fun expToStr (expr: exp) =
   let fun optostr (opr: operator) =
             (case opr of PLUS => "+"
-                      | TIMES => "*"
-                      | MINUS => "-"
-                      | EQUAL => "=="
-                      | LESS => "<")
+                       | TIMES => "*"
+                       | MINUS => "-"
+                       | EQUAL => "=="
+                       | LESS => "<")
   in
     (case expr
        of VAR x => x

@@ -3,12 +3,7 @@
 
 signature EVAL =
 sig
-  type environment
-  type modenv
   type value
-  type appargval
-  val valOf : modenv * Ast.exp -> value
-  val apply : value * value -> value
   val eval : Ast.prog -> value
   val valToStr : value -> string
 end
