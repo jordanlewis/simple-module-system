@@ -1,13 +1,13 @@
-(* dynamic.sml *)
-
+(* dynamic.sml *) 
 (* evaluator *)
 
 signature EVAL =
 sig
   type environment
+  type modenv
   type value
   type appargval
-  val valOf : environment * Ast.exp -> value
+  val valOf : modenv * Ast.exp -> value
   val apply : value * value -> value
   val eval : Ast.prog -> value
   val valToStr : value -> string
@@ -28,16 +28,26 @@ exception RunError of string
 datatype value
   = Num of int
   | Bool of bool
-  | Closure of exp * value mapping
-
-type environment = value mapping
+  | Closure of exp * modenv
+and module = MODULE of modenv
+           | POINTER of modname
+withtype environment = value mapping
+(* mapping from module name -> module environment: "" is local environment *)
+     and modenv = environment * module mapping
 
 (* things that you can pass to apply() as arguments: values or types *)
 datatype appargval
   = TyValArg of ty
   | ValArg of value
 
-fun valOf (env: value mapping, VAR x) = env(x)
+fun valOf (env as (locenv, _), VAR x) = locenv x
+  | valOf (env as (locenv, mods), PATH (modnames, var)) =
+      (case modnames
+         of modname::nil => (case (mods modname)
+                               of MODULE (x as (subenv, mods)) => subenv var
+                                | POINTER y => raise Fail "modpointer")
+          | nil => raise RunError "nil path?"
+          | _ => raise RunError "nested module path unsupported as of yet")
   | valOf (env, NUM n) = Num n
   | valOf (env, PRIM(oper, e1, e2)) =
       let val v1 = valOf(env, e1)
@@ -60,11 +70,11 @@ fun valOf (env: value mapping, VAR x) = env(x)
   | valOf (env, f as TYFN (_, e)) = valOf(env, e)
   | valOf (env, APPLY(func, arg)) = apply(valOf(env, func), valOf(env, arg))
   | valOf (env, TYAPPLY(func, arg)) = valOf(env, func)
-  | valOf (env, LET(x, _, exp, body)) =
-      valOf(bind(env, x, valOf(env, exp)), body)
+  | valOf (env as (locenv, mods), LET(x, _, exp, body)) =
+      valOf((bind(locenv, x, valOf(env, exp)), mods), body)
 
-and apply (func as Closure(FN(name, ty, e), env), arg) =
-             valOf(bind(env, name, arg), e)
+and apply (func as Closure(FN(name, ty, e), env as (locenv, mods)), arg) =
+             valOf((bind(locenv, name, arg), mods), e)
   | apply (func as Closure(TYFN(name, e), env), arg) =
              valOf(env, e)
   | apply (_, arg) = raise RunError "Trying to apply a non-function"
@@ -75,17 +85,26 @@ fun valToStr(v: value) =
       | Bool b => Bool.toString b
       | Closure (expr, env) => "Closure(" ^ expToStr expr ^ ", )" )
 
-fun eval (program: prog as Prog(decls, expr)) =
-  let val env =
-    foldl(fn (dec: decl, env) =>
-              (case dec
-                 of VALDECL (name, e) => bind(env, name, valOf(env, e))
-                  | _ => env))
-          empty decls
+fun eval (program: prog as Prog(declist, expr)) =
+  let fun makeEnv (decls, envir) =
+      (foldl(fn (dec, env as (locenv, mods)) =>
+                 (case dec
+                   of TYDECL (name, arg, ty) => env
+                    | VALDECL (name, e) => (bind(locenv, name, valOf(env, e)),
+                                            mods)
+                    | MODDECL (name, modexpr) =>
+                        (case modexpr
+                           of MVAR mvar => raise RunError "mvar"
+                            | MOD (moddecls) =>
+                                (locenv,
+                                  bind(mods, name,
+                                       MODULE(makeEnv (moddecls,
+                                                       (empty, empty))))))))
+            envir decls)
+      val env = makeEnv (declist, (empty, empty))
   in
-    valOf (env, expr)
+     valOf (env, expr)
   end
-
 
 end
 end

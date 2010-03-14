@@ -84,9 +84,11 @@ fun declToStr (dec: decl) =
                                   (case arg
                                       of NONE => ""
                                       | SOME s => "[" ^ name ^ "]") ^
-                                  " = " ^ tyToStr t ^ "\n")
+                                  " = " ^ tyToStr t ^ "\n"
+      | MODDECL (name, modexpr) =>"module " ^ name ^ " = " ^ modexpToStr modexpr
+      )
 
-fun modexpToStr (modexpr: modexp) =
+and modexpToStr (modexpr: modexp) =
   (case modexpr
      of MOD (decls) => "mod " ^ (foldr(fn(a:decl, b)=>declToStr a^b) "" decls) ^
                        "end\n"

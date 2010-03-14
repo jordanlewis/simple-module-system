@@ -1,12 +1,10 @@
-(* static.sml *)
-
-(* static type checker*)
+(* static type checker *)
 
 signature TYPECHECK =
 sig
-  type environment
+  type modenv
   val replacety : (Ast.tyname * Ast.ty * Ast.ty) -> Ast.ty
-  val typeOf : environment * Ast.exp -> Ast.ty
+  val typeOf : modenv * Ast.exp -> Ast.ty
 end
 
 structure TypeCheck =
@@ -18,6 +16,11 @@ local
 in
 
 type environment = ty mapping
+datatype module = MODULE of modenv
+                | POINTER of modname
+(* mapping from module name -> module environment: "" is local environment *)
+withtype modenv = environment * module mapping
+
 exception TypeError of string
 
 fun replacety (find, replace, ty as TYVAR x) =
@@ -28,7 +31,14 @@ fun replacety (find, replace, ty as TYVAR x) =
       POLY(x, replacety(find, replace, t))
   | replacety (find, replace, ty) = ty
 
-fun typeOf (env, VAR x) = env x
+fun typeOf (env as (locenv, mods), VAR x) = locenv x
+  | typeOf (env as (locenv, mods), PATH (modnames, var)) =
+      (case modnames
+         of modname::nil => (case (mods modname)
+                               of MODULE (x as (subenv, mods)) => subenv var
+                                | POINTER y => raise Fail "modpointer")
+          | nil => raise TypeError "nil path?"
+          | _ => raise TypeError "nested module path unsupported as of yet")
   | typeOf (env, NUM n) = INT
   | typeOf (env, PRIM(PLUS, e1, e2)) = INT
   | typeOf (env, PRIM(TIMES, e1, e2)) = INT
@@ -43,8 +53,8 @@ fun typeOf (env, VAR x) = env x
            if typeOf(env, ff) = ty1 then ty1 else raise TypeError "if 2"
          end)
       else raise TypeError "if 1"
-  | typeOf (env, FN(name, ty, exp)) =
-      FUNCTION(ty, typeOf(bind(env, name, ty), exp))
+  | typeOf (env as (locenv, mods), FN(name, ty, exp)) =
+      FUNCTION(ty, typeOf((bind(locenv, name, ty), mods), exp))
   | typeOf (env, TYFN(name, exp)) = POLY(name, typeOf(env, exp))
   | typeOf (env, APPLY(func, arg)) =
       (case typeOf(env, func)
@@ -56,20 +66,29 @@ fun typeOf (env, VAR x) = env x
       (case typeOf(env, func)
          of POLY(name, tyout) => replacety(name, tyarg, tyout)
           | _ => raise TypeError "tyapplying a non-poly")
-  | typeOf (env, LET(x, ty, exp, body)) = 
+  | typeOf (env as (locenv, mods),  LET(x, ty, exp, body)) = 
       if typeOf(env, exp) = ty
       (* add x => ty to new env *)
-      then typeOf(bind(env, x, ty), body)
+      then typeOf((bind(locenv, x, ty), mods), body)
       else raise TypeError "type mismatch in let"
 
-fun typeCheck (program: prog as Prog(decls, expr)) =
-  let val env = 
-    foldl(fn (dec: decl, env) =>
-              (case dec
-                 of TYDECL (name, arg, ty) => bind(env, name, ty)
-                  | VALDECL (name, e) => bind(env, name, typeOf(env, e))
-                  | _ => env))
-          empty decls
+fun typeCheck (program: prog as Prog(declist, expr)) =
+  let fun makeEnv (decls, envir) =
+      (foldl(fn (dec, env as (locenv, mods)) =>
+                 (case dec
+                   of TYDECL (name, arg, ty) => (bind(locenv, name, ty), mods)
+                    | VALDECL (name, e) => (bind(locenv, name, typeOf(env, e)),
+                                            mods)
+                    | MODDECL (name, modexpr) =>
+                        (case modexpr
+                           of MVAR mvar => raise TypeError "mvar"
+                            | MOD (moddecls) =>
+                                (locenv,
+                                  bind(mods, name,
+                                       MODULE(makeEnv (moddecls,
+                                                       (empty, empty))))))))
+            envir decls)
+      val env = makeEnv (declist, (empty, empty))
   in
     typeOf (env, expr)
   end

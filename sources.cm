@@ -2,7 +2,8 @@ group is
   $/basis.cm
   $/smlnj-lib.cm
 
-syntax.sml
+ast.sml
 env.sml
 dynamic.sml
 static.sml
+main.sml
