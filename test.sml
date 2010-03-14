@@ -19,10 +19,13 @@ val valOfPolyidIntFive = Eval.valOf(Env.empty, polyidIntFive)
 *)
 
 
-val decltest = Prog([MODDECL("mymod", MOD([VALDECL("p", NUM 6)])),
-                     VALDECL("n", NUM 5),
-                     VALDECL("id", TYFN("a", FN("x", TYVAR "a", VAR "x")))],
-                    APPLY(TYAPPLY(VAR "id", INT), PATH(["mymod"], "p")))
+val decltest =
+  Prog([MODDECL("mymod",
+          MOD([VALDECL("id", TYFN("a", FN("x", TYVAR "a", VAR "x"))),
+               MODDECL("submod", MOD([VALDECL("p", NUM 6)]))])),
+        VALDECL("n", NUM 5)],
+       APPLY(TYAPPLY(PATH(["mymod"], "id"), INT),
+                     PATH(["mymod", "submod"], "p")))
 val tyOfDeclTest = Main.run decltest
 
 end

@@ -32,13 +32,20 @@ fun replacety (find, replace, ty as TYVAR x) =
   | replacety (find, replace, ty) = ty
 
 fun typeOf (env as (locenv, mods), VAR x) = locenv x
-  | typeOf (env as (locenv, mods), PATH (modnames, var)) =
-      (case modnames
-         of modname::nil => (case (mods modname)
-                               of MODULE (x as (subenv, mods)) => subenv var
-                                | POINTER y => raise Fail "modpointer")
-          | nil => raise TypeError "nil path?"
-          | _ => raise TypeError "nested module path unsupported as of yet")
+  | typeOf (env:modenv as (locenv, mods), PATH (modlist, var)) =
+      (case modlist
+         of nil => raise TypeError "nil path?"
+          | m::nil => (case (mods m)
+                             of MODULE (x as (subenv, mods)) => subenv var
+                              | POINTER y => raise Fail "modpointer")
+          | _ => let val pathEnv : (modname * modenv) -> modenv =
+                       fn (mname, menv as (subenv, submods)) =>
+                            (case (submods mname)
+                               of POINTER y => raise Fail "pointer"
+                               | MODULE env => env)
+                     val (subenv, mods) = foldl pathEnv env modlist
+                 in subenv var
+                 end)
   | typeOf (env, NUM n) = INT
   | typeOf (env, PRIM(PLUS, e1, e2)) = INT
   | typeOf (env, PRIM(TIMES, e1, e2)) = INT
