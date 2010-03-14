@@ -35,14 +35,11 @@ fun typeOf (env as (locenv, mods), VAR x) = locenv x
   | typeOf (env:modenv as (locenv, mods), PATH (modlist, var)) =
       (case modlist
          of nil => raise TypeError "nil path?"
-          | m::nil => (case (mods m)
-                             of MODULE (x as (subenv, mods)) => subenv var
-                              | POINTER y => raise Fail "modpointer")
-          | _ => let val pathEnv : (modname * modenv) -> modenv =
+          | _ => let val rec pathEnv : (modname * modenv) -> modenv =
                        fn (mname, menv as (subenv, submods)) =>
                             (case (submods mname)
-                               of POINTER y => raise Fail "pointer"
-                               | MODULE env => env)
+                               of MODULE env => env
+                                | POINTER y => pathEnv (y, menv))
                      val (subenv, mods) = foldl pathEnv env modlist
                  in subenv var
                  end)
@@ -88,7 +85,8 @@ fun typeCheck (program: prog as Prog(declist, expr)) =
                                             mods)
                     | MODDECL (name, modexpr) =>
                         (case modexpr
-                           of MVAR mvar => raise TypeError "mvar"
+                           of MVAR mvar => (locenv, bind(mods, name,
+                                                         POINTER(mvar)))
                             | MOD (moddecls) =>
                                 (locenv,
                                   bind(mods, name,

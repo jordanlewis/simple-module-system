@@ -22,10 +22,11 @@ val valOfPolyidIntFive = Eval.valOf(Env.empty, polyidIntFive)
 val decltest =
   Prog([MODDECL("mymod",
           MOD([VALDECL("id", TYFN("a", FN("x", TYVAR "a", VAR "x"))),
-               MODDECL("submod", MOD([VALDECL("p", NUM 6)]))])),
+               MODDECL("submod", MOD([VALDECL("p", NUM 6)])),
+               MODDECL("submodcopy", MVAR("submod"))])),
         VALDECL("n", NUM 5)],
        APPLY(TYAPPLY(PATH(["mymod"], "id"), INT),
-                     PATH(["mymod", "submod"], "p")))
+                     PATH(["mymod", "submodcopy"], "p")))
 val tyOfDeclTest = Main.run decltest
 
 end
