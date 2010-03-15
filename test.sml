@@ -23,12 +23,14 @@ val decltest =
   Prog([MODDECL("mymod",
           MOD([VALDECL("id", TYFN("a", FN("x", TYVAR "a", VAR "x"))),
                TYDECL("intcopy", NONE, INT),
+               VALDECL("z", NUM 7),
                MODDECL("submod", MOD([VALDECL("p", NUM 6)])),
                MODDECL("submodcopy", MVAR("submod"))])),
         VALDECL("n", NUM 5),
+        MODDECL("mymodcopy", MVAR("mymod")),
         TYDECL("myint", NONE, INT)],
-       APPLY(TYAPPLY(PATH(["mymod"], "id"), TYPATH(["mymod"], "intcopy")),
-                     PATH(["mymod", "submodcopy"], "p")))
+       APPLY(TYAPPLY(PATH(["mymod"], "id"), INT),
+             PATH(["mymodcopy", "submodcopy"], "p")))
 val tyOfDeclTest = Main.run decltest
 
 end

@@ -48,6 +48,8 @@ fun tyToStr (typ: ty) =
       | BOOL => "BOOL"
       | FUNCTION (t1, t2) => tyToStr t1 ^ " -> " ^ tyToStr t2
       | TYVAR t => "tyvar(" ^ t ^ ")"
+      | TYPATH (modlist, name) =>
+          (foldr (fn (m, string) => string ^ "." ^ m) "" modlist) ^ "." ^ name
       | POLY (name, t) => "ALL(" ^ name ^ ")" ^ tyToStr t)
 
 fun expToStr (expr: exp) =
@@ -60,6 +62,8 @@ fun expToStr (expr: exp) =
   in
     (case expr
        of VAR x => x
+        | PATH (modlist, name) =>
+          (foldr (fn (m, string) => string ^ "." ^ m) "" modlist) ^ "." ^ name
         | NUM n => Int.toString(n)
         | PRIM (opr, e1, e2) => expToStr e1 ^ " " ^ optostr(opr) ^ " " ^
                                 expToStr e2
