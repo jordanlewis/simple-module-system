@@ -29,7 +29,7 @@ val decltest =
         VALDECL("n", NUM 5),
         MODDECL("mymodcopy", MVAR("mymod")),
         TYDECL("myint", NONE, INT)],
-       APPLY(TYAPPLY(PATH(["mymod"], "id"), INT),
+       APPLY(TYAPPLY(PATH(["mymod"], "id"), TYPATH(["mymodcopy"], "intcopy")),
              PATH(["mymodcopy", "submodcopy"], "p")))
 val tyOfDeclTest = Main.run decltest
 
