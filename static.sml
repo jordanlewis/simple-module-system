@@ -17,6 +17,8 @@ in
 
 exception TypeError of string
 
+(* replacety replaces TYVARARGs with the given type. This is for use in the
+ * body of type functions. *)
 fun replacety (find, replace, ty as TYVARARG x) =
       if (find = x) then replace else ty
   | replacety (find, replace, FUNCTION (t1, t2)) =
@@ -25,6 +27,7 @@ fun replacety (find, replace, ty as TYVARARG x) =
       POLY(x, replacety(find, replace, t))
   | replacety (find, replace, ty) = ty
 
+(* makepathed adds a path to the given type. *)
 fun makepathed (path: string list, TYVAR x) = TYPATH (path, x)
   | makepathed (path, TYPATH (oldpath, x)) = TYPATH (List.concat([path, oldpath]), x)
   | makepathed (path, FUNCTION (t1, t2)) =
