@@ -14,7 +14,6 @@ local
   open Env
 in
 
-
 exception TypeError of string
 
 fun replacety (find, replace, ty as TYVAR x) =
@@ -27,18 +26,18 @@ fun replacety (find, replace, ty as TYVAR x) =
 
 fun baseTy (env, t) =
   (case t
-     of TYVAR n => baseTy (env, lookup env n)
+     of TYVAR n => baseTy (env, getty env n)
       | TYPATH (modlist, n) =>
           let val newenv = pathEnv env modlist
-          in baseTy (newenv, lookup newenv n)
+          in baseTy (newenv, getty newenv n)
           end
       | _ => t)
 
-fun typeOf (env: ty env, VAR x) = lookup env x
+fun typeOf (env: ty env, VAR x) = getval env x
   | typeOf (env, PATH (modlist, var)) =
       (case modlist
          of nil => raise TypeError "nil path?"
-          | _ => lookup (pathEnv env modlist) var)
+          | _ => getval (pathEnv env modlist) var)
   | typeOf (env, NUM n) = INT
   | typeOf (env, PRIM(PLUS, e1, e2)) = INT
   | typeOf (env, PRIM(TIMES, e1, e2)) = INT
@@ -54,13 +53,13 @@ fun typeOf (env: ty env, VAR x) = lookup env x
          end)
       else raise TypeError "if 1"
   | typeOf (env, FN(name, ty, exp)) =
-      FUNCTION(ty, typeOf(bindname env name ty, exp))
+      FUNCTION(ty, typeOf(bindval env name ty, exp))
   | typeOf (env, TYFN(name, exp)) = POLY(name, typeOf(env, exp))
   | typeOf (env, APPLY(func, arg)) =
       (case typeOf(env, func)
          of FUNCTION(tyin, tyout) =>
-             if typeOf(env, arg) = tyin then tyout
-             else raise TypeError "apply argument has wrong type"
+             if baseTy(env, typeOf(env, arg)) = baseTy(env, tyin) then tyout
+             else raise TypeError (tyToStr tyin)
           | _ => raise TypeError "applying a non-fn")
   | typeOf (env, TYAPPLY(func, tyarg)) =
       (case typeOf(env, func)
@@ -69,24 +68,22 @@ fun typeOf (env: ty env, VAR x) = lookup env x
   | typeOf (env,  LET(x, ty, exp, body)) =
       if typeOf(env, exp) = ty
       (* add x => ty to new env *)
-      then typeOf(bindname env x ty, body)
+      then typeOf(bindval env x ty, body)
       else raise TypeError "type mismatch in let"
 
 fun typeCheck (program: prog as Prog(declist, expr)) =
   let fun makeEnv (decls : decl list, envir : ty env) : ty env =
       (foldl(fn (dec, env) =>
                  (case dec
-                   of TYDECL (name, arg, ty) => bindname env name ty
-                    | VALDECL (name, e) => bindname env name (typeOf(env, e))
+                   of TYDECL (name, arg, ty) => bindty env name ty
+                    | VALDECL (name, e) => bindval env name (typeOf(env, e))
                     | MODDECL (name, modexpr) =>
                         (case modexpr
-                           of MVAR mvar => bindmod env name (ENVVAR(mvar))
+                           of MVAR mvar => bindmod env name (getmod env mvar)
                             | MOD (moddecls) =>
-                                bindmod env name
-                                        (makeEnv(moddecls,
-                                                     ENV(empty, empty))))))
+                                bindmod env name (makeEnv(moddecls, env)))))
             envir decls)
-      val env = makeEnv (declist, ENV(empty, empty))
+      val env = makeEnv (declist, newenv)
   in
     typeOf (env, expr)
   end

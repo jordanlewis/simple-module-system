@@ -31,11 +31,11 @@ datatype appargval
   = TyValArg of ty
   | ValArg of value
 
-fun valOf (env: value env, VAR x) = lookup env x
+fun valOf (env: value env, VAR x) = getval env x
   | valOf (env, PATH (modlist, var)) =
       (case modlist
          of nil => raise RunError "nil path?"
-          | _ => lookup (pathEnv env modlist) var)
+          | _ => getval (pathEnv env modlist) var)
   | valOf (env, NUM n) = Num n
   | valOf (env, PRIM(oper, e1, e2)) =
       let val v1 = valOf(env, e1)
@@ -59,10 +59,10 @@ fun valOf (env: value env, VAR x) = lookup env x
   | valOf (env, APPLY(func, arg)) = apply(valOf(env, func), valOf(env, arg))
   | valOf (env, TYAPPLY(func, arg)) = valOf(env, func)
   | valOf (env, LET(x, _, exp, body)) =
-      valOf(bindname env x (valOf(env, exp)), body)
+      valOf(bindval env x (valOf(env, exp)), body)
 
 and apply (func as Closure(FN(name, ty, e), env), arg) =
-             valOf(bindname env name arg, e)
+             valOf(bindval env name arg, e)
   | apply (func as Closure(TYFN(name, e), env), arg) =
              valOf(env, e)
   | apply (_, arg) = raise RunError "Trying to apply a non-function"
@@ -78,16 +78,14 @@ fun eval (program: prog as Prog(declist, expr)) =
       (foldl(fn (dec, env) =>
                  (case dec
                    of TYDECL (name, arg, ty) => env
-                    | VALDECL (name, e) => bindname env name (valOf (env, e))
+                    | VALDECL (name, e) => bindval env name (valOf (env, e))
                     | MODDECL (name, modexpr) =>
                         (case modexpr
-                           of MVAR mvar => bindmod env name (ENVVAR(mvar))
+                           of MVAR mvar => bindmod env name (getmod env mvar)
                             | MOD (moddecls) =>
-                                bindmod env name
-                                        (makeEnv(moddecls,
-                                                 ENV(empty, empty))))))
+                                bindmod env name (makeEnv(moddecls, env)))))
             envir decls)
-      val env = makeEnv (declist, ENV(empty, empty))
+      val env = makeEnv (declist, newenv)
   in
      valOf (env, expr)
   end

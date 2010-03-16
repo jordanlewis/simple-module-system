@@ -10,42 +10,37 @@ struct
 
 type 'a mapping = string -> 'a
 
-datatype 'a env = ENV of 'a mapping * ('a env) mapping
-                | ENVVAR of string
+datatype 'a env = ENV of {venv: 'a mapping, tenv: 'a mapping,
+                          menv: 'a env mapping}
 
 val empty : 'a mapping =
       fn x => raise Fail(concat["unbound variable \"", x, "\""])
+
+val newenv = ENV {venv=empty, tenv=empty, menv=empty}
 
 (* Curried function - build new envs with bind(env, x, v) and look up by
  * applying that to the value to look up*)
 fun bind (map : 'a mapping, name, value) lookup =
   if (name = lookup) then value else map(lookup)
 
-fun bindname (e: 'a env) (name: string) (value: 'a) =
-  case e
-    of ENV (map, subenv) => ENV(bind(map, name, value), subenv)
-     | ENVVAR s => raise Fail "var bindname"
+fun bindval (e as ENV {venv=v, tenv=t, menv=m}) (name: string) (value: 'a) =
+  ENV {venv=bind(v, name, value), tenv=t, menv=m}
 
-fun bindmod (e: 'a env) (name: string) (newenv: 'a env) : 'a env=
-  case e
-    of ENV (map, subenv) => ENV(map, bind(subenv, name, newenv))
-     | ENVVAR s => raise Fail "var bindmod"
+fun bindty (e as ENV {venv=v, tenv=t, menv=m}) (name: string) (typ: 'a) =
+  ENV {venv=v, tenv=bind(t, name, typ), menv=m}
 
-fun lookup (e: 'a env) (name: string) : 'a =
-  case e
-    of ENV (map, subenv) => map name
-     | ENVVAR s => raise Fail "var lookup"
+fun bindmod (e as ENV {venv=v, tenv=t, menv=m}) (name: string)
+            (newenv: 'a env) =
+  ENV {venv=v, tenv=t, menv=bind(m, name, newenv)}
 
+
+fun getval (e as ENV {venv=v, ...}) (name: string) = v name
+fun getty (e as ENV {tenv=t, ...}) (name: string) = t name
+fun getmod (e as ENV {menv=m, ...}) (name: string) = m name
 
 fun pathEnv (e: 'a env) (path: string list) =
-  let fun subEnv (name: string, e: 'a env) =
-        case e
-          of ENV (map, subenv) =>
-            let val x = subenv name
-            in case x of ENV _ => x
-                       | ENVVAR s => subEnv(s, e)
-            end
-           | ENVVAR s => raise Fail "var pathname 1"
+  let fun subEnv (name:string, e) =
+    getmod e name
   in
     foldl subEnv e path
   end

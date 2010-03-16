@@ -31,6 +31,15 @@ val decltest =
         TYDECL("myint", NONE, INT)],
        APPLY(TYAPPLY(PATH(["mymod"], "id"), TYPATH(["mymodcopy"], "intcopy")),
              PATH(["mymodcopy", "submodcopy"], "p")))
-val tyOfDeclTest = Main.run decltest
+val () = Main.run decltest
+
+val prog2 =
+  Prog([TYDECL("myint", NONE, INT),
+        MODDECL("mymod",
+          MOD([VALDECL("foo", FN("x", TYVAR "myint", VAR "x"))]))],
+       APPLY(PATH(["mymod"], "foo"), (NUM 6)))
+
+val () = Main.run prog2
+
 
 end
