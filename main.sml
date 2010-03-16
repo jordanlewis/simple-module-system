@@ -1,15 +1,18 @@
 structure Main =
 struct
 
-fun run(program: Ast.prog) =
+fun run(program: Ast.prog as Ast.Prog(decls, exp))  =
   let
-      (*val () = TextIO.print("started type check\n")*)
       val typ = TypeCheck.typeCheck program
-      (*val () = TextIO.print("finished type check, beginnning evaluation\n")*)
+                handle TypeCheck.TypeError t
+                         => raise TypeCheck.TypeError ("type checker: " ^ t)
       val value = Eval.eval program
-      (*val () = TextIO.print("finished evaluation\n")*)
+                  handle Eval.RunError t
+                           => raise Eval.RunError ("evaluator: " ^ t)
   in
-      TextIO.print("type:  " ^ Ast.tyToStr typ ^ "\n" ^
-                   "value: " ^ Eval.valToStr value ^ "\n")
+      TextIO.print(
+      "decls:\n" ^ foldr(fn(a, b)=>"  " ^ PP.declToStr a^b) "" decls ^ "\n" ^
+      "exp: "   ^ PP.expToStr exp ^ "\n" ^
+      "   = " ^ PP.valToStr value ^ " : " ^ PP.tyToStr typ ^ "\n\n\n")
   end
 end

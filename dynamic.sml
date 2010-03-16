@@ -3,10 +3,13 @@
 
 signature EVAL =
 sig
-  type value
+  datatype value
+  = Num of int
+  | Bool of bool
+  | Closure of Ast.exp * value Env.env
   val eval : Ast.prog -> value
-  val valToStr : value -> string
   val valOf : value Env.env * Ast.exp -> value
+  exception RunError of string
 end
 
 structure Eval : EVAL =
@@ -66,12 +69,6 @@ and apply (func as Closure(FN(name, ty, e), env), arg) =
   | apply (func as Closure(TYFN(name, e), env), arg) =
              valOf(env, e)
   | apply (_, arg) = raise RunError "Trying to apply a non-function"
-
-fun valToStr(v: value) =
-  (case v
-     of Num n => Int.toString n
-      | Bool b => Bool.toString b
-      | Closure (expr, env) => "Closure(" ^ expToStr expr ^ ", )" )
 
 fun eval (program: prog as Prog(declist, expr)) =
   let fun makeEnv (decls, envir) =
