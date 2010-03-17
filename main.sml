@@ -3,6 +3,9 @@ struct
 
 fun run(program: Ast.prog as Ast.Prog(decls, exp))  =
   let
+      val () = TextIO.print(
+      "decls:\n" ^ foldr(fn(a, b)=>"  " ^ PP.declToStr a^b) "" decls ^ "\n" ^
+      "exp: "   ^ PP.expToStr exp ^ "\n")
       val typ = TypeCheck.typeCheck program
                handle TypeCheck.TypeError s
                              => raise TypeCheck.TypeError ("type checker: " ^ s)
@@ -12,8 +15,6 @@ fun run(program: Ast.prog as Ast.Prog(decls, exp))  =
                     | Fail s => raise Fail ("evaluator: " ^ s)
   in
       TextIO.print(
-      "decls:\n" ^ foldr(fn(a, b)=>"  " ^ PP.declToStr a^b) "" decls ^ "\n" ^
-      "exp: "   ^ PP.expToStr exp ^ "\n" ^
       "   = " ^ PP.valToStr value ^ " : " ^ PP.tyToStr typ ^ "\n\n\n")
   end
 end

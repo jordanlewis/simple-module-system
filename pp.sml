@@ -16,7 +16,7 @@ fun tyToStr (typ: ty) =
       | TYPATH (modlist, name) =>
           implode(tl(explode((foldr (fn (m, string) => string ^ "." ^ m) ""
           modlist) ^ "." ^ name)))
-      | POLY (name, t) => "ALL(" ^ name ^ ")" ^ tyToStr t)
+      | POLY (name, t) => "ALL(" ^ name ^ ") " ^ tyToStr t)
 
 fun expToStr (expr: exp) =
   let fun optostr (opr: operator) =

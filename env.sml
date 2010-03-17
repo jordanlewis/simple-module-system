@@ -38,7 +38,7 @@ fun appendpath (e as ENV {venv=v, tenv=t, menv=m, path=p}, name: string) =
   ENV {venv=v, tenv=t, menv=m, path=name::p}
 
 fun bindpath (e as ENV {venv=v, tenv=t, menv=m, path=p}, path: string list) =
-  ENV {venv=v, tenv=t, menv=m, path=p}
+  ENV {venv=v, tenv=t, menv=m, path=path}
 
 
 fun getval (e as ENV {venv=v, ...}) (name: string) = v name

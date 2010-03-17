@@ -35,14 +35,28 @@ fun makepathed (path: string list, TYVAR x) = TYPATH (path, x)
   | makepathed (path, POLY (x, t)) = POLY (x, makepathed (path, t))
   | makepathed (path, ty) = ty
 
+(* Besides resolving type variables, this needs to also canonicalize TYVARARGS
+ *  so two POLY types with different TYVARARG names but similar structures
+ *  will be equal (e.g. ALL(a) = a->Int  ==  All(b) = b->int) *)
 fun baseTy (env, t) =
+  let fun loop (env, t, nargs:int) =
   (case t
-     of TYVAR n => baseTy (env, getty env n)
+     of TYVAR n => loop (env, getty env n, nargs)
       | TYPATH (modlist, n) =>
           let val newenv = pathEnv env modlist
-          in baseTy (newenv, getty newenv n)
+          in loop (newenv, getty newenv n, nargs)
+          end
+      | FUNCTION (t1, t2) => FUNCTION (loop (env, t1, nargs),
+                                       loop (env, t2, nargs))
+      | POLY (name, t) =>
+          let val newname = "a" ^ Int.toString(nargs)
+          in POLY(newname,
+                  loop(env, replacety (name, TYVARARG newname, t), nargs + 1))
           end
       | _ => t)
+  in
+    loop (env, t, 0)
+  end
 
 fun typeOf (env: ty env, VAR x) = getval env x
   | typeOf (env, p as PATH (modlist, var)) =
@@ -66,7 +80,7 @@ fun typeOf (env: ty env, VAR x) = getval env x
          end)
       else raise TypeError "if 1"
   | typeOf (env, FN(name, ty, exp)) =
-      FUNCTION(ty, typeOf(bindval env name ty, exp))
+      baseTy (env, FUNCTION(ty, typeOf(bindval env name ty, exp)))
   | typeOf (env, TYFN(name, exp)) = POLY(name, typeOf(env, exp))
   | typeOf (env, APPLY(func, arg)) =
       (case typeOf(env, func)
@@ -76,7 +90,7 @@ fun typeOf (env: ty env, VAR x) = getval env x
              else raise TypeError "function"
           | _ => raise TypeError "applying a non-fn")
   | typeOf (env, TYAPPLY(func, tyarg)) =
-      (case typeOf(env, func)
+    (case typeOf(env, func)
          of POLY(name, tyout) => replacety(name, baseTy (env, tyarg), tyout)
           | _ => raise TypeError "tyapplying a non-poly")
   | typeOf (env,  LET(x, ty, exp, body)) =
